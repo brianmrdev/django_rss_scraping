@@ -1,0 +1,160 @@
+{% extends 'base.html' %} {% block container %}
+
+<div class="md:flex md:justify-center">
+  <main class="p-6 pt-10">
+    <div class="pb-12 mt-5">
+      <form id="form-search">
+        {% csrf_token %}
+        <div class="form-control">
+          <div class="input-group justify-center">
+            <input
+              type="text"
+              placeholder="RSS URL"
+              class="input input-bordered md:w-[400px]"
+              name="url"
+              id="url"
+            />
+            <button class="btn btn-outline" type="submit" id="buttonSubmit">
+              GET
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="pb-12 mt-5">
+      <div class="overflow-x-auto w-full">
+        <div id="results-box"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+{% endblock %} {% block extrajs %}
+<script>
+  function isValidURL(str) {
+    const pattern = new RegExp(
+      "^(http(s?):\\/\\/)" + // protocol
+        "((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|" + // domain name
+        "((\\d{1,3}\\.){3}\\d{1,3}))" + // OR ip (v4) address
+        "(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*" + // port and path
+        "(\\?[;&a-z\\d%_.~+=-]*)?" + // query string
+        "(\\#[-a-z\\d_]*)?$",
+      "i"
+    ); // fragment locator
+    return !!pattern.test(str);
+  }
+
+  $(function () {
+    $("#form-search").submit(function () {
+      //Añadimos el spinner
+      $("#results-box").html(`
+            <div class="sk-fading-circle">
+              <div class="sk-circle1 sk-circle"></div>
+              <div class="sk-circle2 sk-circle"></div>
+              <div class="sk-circle3 sk-circle"></div>
+              <div class="sk-circle4 sk-circle"></div>
+              <div class="sk-circle5 sk-circle"></div>
+              <div class="sk-circle6 sk-circle"></div>
+              <div class="sk-circle7 sk-circle"></div>
+              <div class="sk-circle8 sk-circle"></div>
+              <div class="sk-circle9 sk-circle"></div>
+              <div class="sk-circle10 sk-circle"></div>
+              <div class="sk-circle11 sk-circle"></div>
+              <div class="sk-circle12 sk-circle"></div>
+            </div>
+            
+            `);
+      document.querySelector("#buttonSubmit").disabled = true;
+      const url = $("#url").val();
+      const dataString = $("#form-search").serialize();
+      const resultsBox = document.getElementById("results-box");
+      const tableStart = `
+            <table class="table w-full">
+                  <!-- head -->
+                  <thead>
+                    <tr>                              
+                      <th>Titular</th>
+                      <th>Fecha</th>                              
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="task-row">
+                  </tbody>
+                  <!-- foot -->
+                  <tfoot>
+                    <tr>                              
+                        <th>Titular</th>
+                        <th>Fecha</th>                              
+                        <th></th>
+                    </tr>
+                  </tfoot>                  
+                </table>`;
+
+      if (url == "") {
+        var Toast = Swal.mixin({
+          toast: true,
+          orientation: "auto",
+          showConfirmButton: false,
+          timer: 3000,
+        });
+        Toast.fire({
+          icon: "info",
+          title: "Debe especificar una url para buscar",
+        });
+        document.querySelector("#buttonSubmit").disabled = false;
+        resultsBox.innerHTML = "";
+      } else if (isValidURL(url)) {
+        $.ajax({
+          type: "POST",
+          url: "{% url 'feeds:index' %}",
+          data: dataString,
+          success: (res) => {
+            const data = res.data;
+            if (Array.isArray(data)) {
+              document.querySelector("#buttonSubmit").disabled = false;
+              resultsBox.innerHTML = `${tableStart}`;
+              data.forEach((news) => {
+                const tbody = document.getElementById("task-row");
+                tbody.innerHTML += `
+                                <tr>                              
+                                    <td>
+                                        <div class="flex items-center space-x-3">                                        
+                                        <div>
+                                            <div class="font-bold">${news.title}</div>                                    
+                                        </div>
+                                        </div>
+                                    </td>                              
+                                    <td>${news.published}</td>
+                                    <th>
+                                        <a class="btn btn-ghost btn-xs" href="${news.link}" target="_blank">Leer mas</a>
+                                    </th>
+                                </tr>
+                              `;
+              });
+            } else {
+              document.querySelector("#buttonSubmit").disabled = false;
+              resultsBox.innerHTML = `<div class="alert alert-warning mt-4" role="alert"><center>${data}</center></div>`;
+            }
+          },
+          error: (err) => {},
+        });
+      } else {
+        var Toast = Swal.mixin({
+          toast: true,
+          orientation: "auto",
+          showConfirmButton: false,
+          timer: 3000,
+        });
+        Toast.fire({
+          icon: "info",
+          title: "Url no valida",
+        });
+        document.querySelector("#buttonSubmit").disabled = false;
+        resultsBox.innerHTML = "";
+      }
+      return false;
+    });
+  });
+</script>
+{% endblock %}
